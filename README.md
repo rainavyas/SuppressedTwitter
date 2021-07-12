@@ -32,7 +32,7 @@ _python ./train.py electra_trained.th electra --B=8 --lr=0.00001 --epochs=5 --su
 
 | Model Architecture | Test Accuracy (%) |
 | ----------------- | :-----------------: |
-ELECTRA (base) encoder + classification head | 93.3 |
+ELECTRA (base) encoder + classification head |  |
 
 ### Training Details
 
