@@ -1,6 +1,6 @@
 '''
 Train a transformer-based model for emotion classification
-Add size of largest singular value of projection matrices to cost function
+For suppression of the largest singular value of projection matrices spectral normalization is carried out
 '''
 
 import torch
@@ -16,33 +16,37 @@ from tools import AverageMeter, accuracy_topk, get_default_device
 from models import ElectraSequenceClassifier, BertSequenceClassifier, RobertaSequenceClassifier
 
 
-def singular_cost(model, num_layers=12, num_heads=12):
+def apply_spectral_norm(model, num_layers=12, num_heads=12, hidden_size=768):
     '''
-    Part of cost function associated with projection
-    matrices' largest singular values.
-
-    Currently written specifically for the Electra model
+    Spectral Normalisation of Projection Matices
     '''
     projection_matrices = ['query', 'key', 'value']
-    params_dict = model.state_dict()
-    cost_sum = 0
+
+    old_params = {}
+    for name, params in model.named_parameters():
+        old_params[name] = params.clone()
+
     for layer in range(num_layers):
         for proj in projection_matrices:
             param_name = f'electra.encoder.layer.{layer}.attention.self.{proj}.weight'
-            mat = params_dict[param_name]
-            # Need to split by head and finish
+            mat = old_params[param_name]
+            
+            normed_head_mats = []
+            for head in range(num_heads):
+                chunk_size = hidden_size/num_heads
+                start = head*chunk_size
+                end = (head+1)*chunk_size
+                mat_head = mat[:,start:end]
+                normed_mat_head = nn.utils.parameterizations.spectral_norm(mat_head)
+                normed_head_mats.append(normed_mat_head)
+            new_mat = torch.cat(normed_head_mats)
+            old_params[param_name] = new_mat
+            
+    for name, params in model.named_parameters():
+        params.data.copy_(old_params[name])
 
 
-
-def total_loss(model, criterion, logits, target, sing_coeff):
-    '''
-    Loss function combining criterion and singular cost
-    '''
-    crit_loss = criterion(logits, target)
-    total_loss = crit_loss + sing_coeff*singular_cost(model)
-    return total_loss
-
-def train(train_loader, model, criterion, optimizer, epoch, total_loss, sing_coeff, device, print_freq=25):
+def train(train_loader, model, criterion, optimizer, epoch, device, print_freq=25):
     '''
     Run one train epoch
     '''
@@ -60,12 +64,15 @@ def train(train_loader, model, criterion, optimizer, epoch, total_loss, sing_coe
 
         # Forward pass
         logits = model(id, mask)
-        loss = total_loss(model, criterion, logits, target, sing_coeff)
+        loss = criterion(logits, target)
 
         # Backward pass and update
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        # Spectral norm regularization of projection matrices
+        apply_spectral_norm(model)
 
         # measure accuracy and record loss
         acc = accuracy_topk(logits.data, target)
@@ -79,7 +86,7 @@ def train(train_loader, model, criterion, optimizer, epoch, total_loss, sing_coe
                       epoch, i, len(train_loader),
                       loss=losses, prec=accs))
 
-def eval(val_loader, model, criterion, total_loss, sing_coeff, device):
+def eval(val_loader, model, criterion, device):
     '''
     Run evaluation
     '''
@@ -98,7 +105,7 @@ def eval(val_loader, model, criterion, total_loss, sing_coeff, device):
 
             # Forward pass
             logits = model(id, mask)
-            loss = total_loss(model, criterion, logits, target, sing_coeff)
+            loss = criterion(logits, target)
 
             # measure accuracy and record loss
             acc = accuracy_topk(logits.data, target)
@@ -121,7 +128,6 @@ if __name__ == "__main__":
     commandLineParser.add_argument('--lr', type=float, default=0.000001, help="Specify learning rate")
     commandLineParser.add_argument('--sch', type=int, default=10, help="Specify scheduler rate")
     commandLineParser.add_argument('--seed', type=int, default=1, help="Specify seed")
-    commandLineParser.add_argument('--sing', type=float, default=0.1, help='Singuar cost function coefficient')
 
     args = commandLineParser.parse_args()
     out_file = args.OUT
@@ -131,7 +137,6 @@ if __name__ == "__main__":
     lr = args.lr
     sch = args.sch
     seed = args.seed
-    sing = args.sing
 
     torch.manual_seed(seed)
 
@@ -183,15 +188,15 @@ if __name__ == "__main__":
 
         # train for one epoch
         print('current lr {:.5e}'.format(optimizer.param_groups[0]['lr']))
-        train(train_dl, model, criterion, optimizer, epoch, total_loss, sing, device)
+        train(train_dl, model, criterion, optimizer, epoch, device)
         scheduler.step()
 
         # evaluate on validation set
-        eval(val_dl, model, criterion, total_loss, sing, device)
+        eval(val_dl, model, criterion, device)
     
     # evaluate on test set
     print("Test set\n")
-    eval(test_dl, model, criterion, total_loss, sing, device)
+    eval(test_dl, model, criterion, device)
 
     # Save the trained model
     state = model.state_dict()
