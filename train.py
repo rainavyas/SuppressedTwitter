@@ -16,7 +16,7 @@ from tools import AverageMeter, accuracy_topk, get_default_device
 from models import ElectraSequenceClassifier, BertSequenceClassifier, RobertaSequenceClassifier
 
 
-def singular_cost(model, num_layers=12, num_heads=12):
+def singular_cost(model, num_layers=12, num_heads=12, hidden_size=768):
     '''
     Part of cost function associated with projection
     matrices' largest singular values.
@@ -25,13 +25,19 @@ def singular_cost(model, num_layers=12, num_heads=12):
     '''
     projection_matrices = ['query', 'key', 'value']
     params_dict = model.state_dict()
-    cost_sum = 0
+    total = 0
     for layer in range(num_layers):
         for proj in projection_matrices:
             param_name = f'electra.encoder.layer.{layer}.attention.self.{proj}.weight'
             mat = params_dict[param_name]
-            # Need to split by head and finish
-
+            for head in range(num_heads):
+                chunk_size = hidden_size/num_heads
+                start = int(head*chunk_size)
+                end = int((head+1)*chunk_size)
+                mat_head = mat[:,start:end]
+                spectral_norm = torch.linalg.norm(mat_head, ord=2, dim=(0,1))
+                total+= spectral_norm
+    return total
 
 
 def total_loss(model, criterion, logits, target, sing_coeff):
