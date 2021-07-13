@@ -30,6 +30,8 @@ def apply_spectral_norm(model, num_layers=12, num_heads=12, hidden_size=768):
         for proj in projection_matrices:
             param_name = f'electra.encoder.layer.{layer}.attention.self.{proj}.weight'
             mat = old_params[param_name]
+
+            print(mat.size())
             
             normed_head_mats = []
             for head in range(num_heads):
@@ -37,10 +39,14 @@ def apply_spectral_norm(model, num_layers=12, num_heads=12, hidden_size=768):
                 start = int(head*chunk_size)
                 end = int((head+1)*chunk_size)
                 mat_head = mat[:,start:end]
+                print(mat_head.size())
                 spectral_norm = torch.linalg.norm(mat_head, ord=2, dim=(0,1))
+                print(spectral_norm)
                 normed_mat_head = mat_head/spectral_norm
+                print(normed_mat_head.size())
                 normed_head_mats.append(normed_mat_head)
             new_mat = torch.cat(normed_head_mats)
+            print(new_mat.size())
             old_params[param_name] = new_mat
             
     for name, params in model.named_parameters():
