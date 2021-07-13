@@ -34,8 +34,8 @@ def apply_spectral_norm(model, num_layers=12, num_heads=12, hidden_size=768):
             normed_head_mats = []
             for head in range(num_heads):
                 chunk_size = hidden_size/num_heads
-                start = head*chunk_size
-                end = (head+1)*chunk_size
+                start = int(head*chunk_size)
+                end = int((head+1)*chunk_size)
                 mat_head = mat[:,start:end]
                 normed_mat_head = nn.utils.parameterizations.spectral_norm(mat_head)
                 normed_head_mats.append(normed_mat_head)
