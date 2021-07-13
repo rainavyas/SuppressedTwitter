@@ -37,7 +37,7 @@ def apply_spectral_norm(model, num_layers=12, num_heads=12, hidden_size=768):
                 start = int(head*chunk_size)
                 end = int((head+1)*chunk_size)
                 mat_head = mat[:,start:end]
-                normed_mat_head = nn.utils.parameterizations.spectral_norm(mat_head)
+                normed_mat_head = nn.utils.parametrizations.spectral_norm(mat_head)
                 normed_head_mats.append(normed_mat_head)
             new_mat = torch.cat(normed_head_mats)
             old_params[param_name] = new_mat
