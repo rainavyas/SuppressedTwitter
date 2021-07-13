@@ -143,7 +143,7 @@ if __name__ == "__main__":
     # Save the command run
     if not os.path.isdir('CMDs'):
         os.mkdir('CMDs')
-    with open('CMDs/train.cmd', 'a') as f:
+    with open('CMDs/train_spectral_norm.cmd', 'a') as f:
         f.write(' '.join(sys.argv)+'\n')
 
     # Get the device
