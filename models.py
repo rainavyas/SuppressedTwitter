@@ -25,7 +25,7 @@ class ElectraSequenceClassifier(nn.Module):
     '''
     Sentence Level classification using Electra for encoding sentence
     '''
-    def __init__(self, hidden_size=768, classes=8):
+    def __init__(self, hidden_size=768, classes=6):
         super().__init__()
         self.electra = ElectraModel.from_pretrained('google/electra-base-discriminator')
         self.classifier = ClassificationHeadElectra(hidden_size, classes)
@@ -47,7 +47,7 @@ class BertSequenceClassifier(nn.Module):
     '''
     Sentence Level classification using Bert for encoding sentence
     '''
-    def __init__(self, hidden_size=768, classes=8):
+    def __init__(self, hidden_size=768, classes=6):
         super().__init__()
         self.bert = BertModel.from_pretrained('bert-base-uncased')
         self.classifier = nn.Linear(hidden_size, classes)
@@ -69,7 +69,7 @@ class RobertaSequenceClassifier(nn.Module):
     '''
     Sentence Level classification using Roberta for encoding sentence
     '''
-    def __init__(self, hidden_size=768, classes=8):
+    def __init__(self, hidden_size=768, classes=6):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained('roberta-base')
         self.classifier = nn.Linear(hidden_size, classes)
