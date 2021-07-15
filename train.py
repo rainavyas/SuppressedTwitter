@@ -37,6 +37,7 @@ def singular_cost(model, num_layers=12, num_heads=12, hidden_size=768):
                 mat_head = mat[:,start:end]
                 spectral_norm = torch.linalg.norm(mat_head, ord=2, dim=(0,1))
                 total+= spectral_norm
+    print("Singular Value Sum", total.item())
     return total
 
 
