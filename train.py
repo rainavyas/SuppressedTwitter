@@ -67,7 +67,8 @@ def train(train_loader, model, criterion, optimizer, epoch, total_loss, sing_coe
 
         # Forward pass
         logits = model(id, mask)
-        loss = total_loss(model, criterion, logits, target, sing_coeff)
+        # loss = total_loss(model, criterion, logits, target, sing_coeff)
+        loss = criterion(logits, target)
 
         # Backward pass and update
         optimizer.zero_grad()
