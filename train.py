@@ -24,7 +24,11 @@ def singular_cost(model, num_layers=12, num_heads=12, hidden_size=768):
     Currently written specifically for the Electra model
     '''
     projection_matrices = ['query', 'key', 'value']
-    params_dict = model.state_dict()
+    # params_dict = model.state_dict() - this loses gradient information of parameters
+    params_dict = {}
+    for name, params in model.named_parameters():
+        params_dict[name] = params.clone()
+        
     total = 0
     for layer in range(num_layers):
         for proj in projection_matrices:
