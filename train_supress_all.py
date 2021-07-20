@@ -35,18 +35,18 @@ def singular_cost(model, num_layers=12, num_heads=12, hidden_size=768):
         # Add singular value of Attention linear layer matrix
         param_name = f'electra.encoder.layer.{layer}.attention.output.dense.weight'
         mat = params_dict[param_name]
-        spectral_norm = torch.linalg.norm(mat_head, ord=2, dim=(0,1))
+        spectral_norm = torch.linalg.norm(mat, ord=2, dim=(0,1))
         total+= spectral_norm
 
         # Add singular value of all DNN weights matrices
         param_name = f'electra.encoder.layer.{layer}.intermediate.dense.weight'
         mat = params_dict[param_name]
-        spectral_norm = torch.linalg.norm(mat_head, ord=2, dim=(0,1))
+        spectral_norm = torch.linalg.norm(mat, ord=2, dim=(0,1))
         total+= spectral_norm
 
         param_name = f'electra.encoder.layer.{layer}.output.dense.weight'
         mat = params_dict[param_name]
-        spectral_norm = torch.linalg.norm(mat_head, ord=2, dim=(0,1))
+        spectral_norm = torch.linalg.norm(mat, ord=2, dim=(0,1))
         total+= spectral_norm
 
         # Add singular value of all attention matrices
