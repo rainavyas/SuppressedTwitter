@@ -40,7 +40,7 @@ def clip_params(model, epsilon):
     for name, params in model.named_parameters():
         params.data.copy_(old_params[name])
 
-def train_pgd(dl, attack_model, criterion, optimizer, epoch, epsilon, layer_handler, device):
+def train_pgd(dl, attack_model, criterion, optimizer, epoch, epsilon, layer_handler, device, out_file=None):
     """
         Run one train epoch
     """
@@ -78,19 +78,11 @@ def train_pgd(dl, attack_model, criterion, optimizer, epoch, epsilon, layer_hand
             losses.update(loss.item(), X.size(0))
             top1.update(prec1.item(), X.size(0))
 
-    print(f'Epoch: {epoch}\t Loss: {losses.avg}\t Accuracy: {top1.avg}')
-
-
-def eval_pgd(X, attention_mask, target, attack_model, criterion, layer_handler):
-    attack_model.eval()
-    with torch.no_grad():
-        output_attack = attack_model(X, attention_mask, layer_handler)
-        loss = criterion(output_attack, target)
-        output_attack = output_attack.float()
-        output_no_attack = layer_handler.pass_through_rest(X, attention_mask)
-        fool = fooling_rate(output_no_attack, output_attack, target)
-        prec1 = accuracy_topk(output_attack.data, target)
-    print(f'Evaluation\t Loss: {loss}\t Accuracy: {prec1}\t Fooling Rate: {fool}')
+    out = f'Epoch: {epoch}\t Loss: {losses.avg}\t Accuracy: {top1.avg}'
+    print(out)
+    if out_file is not None:
+        with open(out_file, 'a') as f:
+            f.write(out)
 
 def fooling_rate(output_no_attack, output_attack, target):
 
@@ -108,12 +100,29 @@ def fooling_rate(output_no_attack, output_attack, target):
         total_count+=1
     return fool_count/total_count
 
+def eval_pgd(X, attention_mask, target, attack_model, criterion, layer_handler, out_file=None):
+    attack_model.eval()
+    with torch.no_grad():
+        output_attack = attack_model(X, attention_mask, layer_handler)
+        loss = criterion(output_attack, target)
+        output_attack = output_attack.float()
+        output_no_attack = layer_handler.pass_through_rest(X, attention_mask)
+        fool = fooling_rate(output_no_attack, output_attack, target)
+        prec1 = accuracy_topk(output_attack.data, target)
+    out = f'Evaluation\t Loss: {loss}\t Accuracy: {prec1}\t Fooling Rate: {fool}'
+    print(out)
+    if out_file is not None:
+        with open(out_file, 'a') as f:
+            f.write(out)
+
 if __name__ == '__main__':
+
 
     # Get command line arguments
     commandLineParser = argparse.ArgumentParser()
     commandLineParser.add_argument('MODEL', type=str, help='trained sentiment classifier .th model')
     commandLineParser.add_argument('DATA_PATH', type=str, help='data filepath')
+    commandLineParser.add_argument('OUT_DIR', type=str, help='DIR to save results to')
     commandLineParser.add_argument('--start_ind', type=int, default=0, help="tweet index to start at")
     commandLineParser.add_argument('--end_ind', type=int, default=100, help="tweet index to end at")
     commandLineParser.add_argument('--epsilon', type=float, default=0.01, help="l-inf pgd perturbation size")
@@ -125,6 +134,7 @@ if __name__ == '__main__':
     args = commandLineParser.parse_args()
     model_path = args.MODEL
     data_path = args.DATA_PATH
+    out_dir = args.OUT_DIR
     start_ind = args.start_ind
     end_ind = args.end_ind
     epsilon = args.epsilon
@@ -159,11 +169,18 @@ if __name__ == '__main__':
     tweets_list = tweets_list[start_ind:end_ind]
     labels = labels[start_ind:end_ind]
 
-# -----------------------------------
+    # -----------------------------------
     # 1) Individual PGD attack
     # -----------------------------------
-    print()
-    print('---------------------------------------------------------')
+
+    # Create directory to save files in
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+
+    # Create file to store training details
+    filename = out_dir +'/'+str(epsilon)+'.txt'
+    with open(filename, 'w') as f:
+        f.write(f'Epsilon {epsilon}\n')
 
     # Create model handler
     handler = Electra_Layer_Handler(model, layer_num=0)
@@ -192,7 +209,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.SGD(attack_model.parameters(), lr=lr)
 
     for epoch in range(epochs):
-        train_pgd(dl, attack_model, criterion, optimizer, epoch, epsilon, handler, device)
-    eval_pgd(input_embeddings, mask, labels, attack_model, criterion, handler)
+        train_pgd(dl, attack_model, criterion, optimizer, epoch, epsilon, handler, device, filename)
+    eval_pgd(input_embeddings, mask, labels, attack_model, criterion, handler, filename)
     print('-----------------------------------------------------------')
     print()
