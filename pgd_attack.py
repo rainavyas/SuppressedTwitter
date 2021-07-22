@@ -162,6 +162,8 @@ if __name__ == '__main__':
 # -----------------------------------
     # 1) Individual PGD attack
     # -----------------------------------
+    print()
+    print('---------------------------------------------------------')
 
     # Create model handler
     handler = Electra_Layer_Handler(model, layer_num=0)
@@ -175,7 +177,6 @@ if __name__ == '__main__':
 
     # Map ids to input layer embeddings
     input_embeddings = handler.get_layern_outputs(ids, mask)
-    print(torch.mean(torch.abs(input_embeddings)))
 
     # Create attack model
     attack_init = torch.zeros_like(input_embeddings)
@@ -193,3 +194,5 @@ if __name__ == '__main__':
     for epoch in range(epochs):
         train_pgd(dl, attack_model, criterion, optimizer, epoch, epsilon, handler, device)
     eval_pgd(input_embeddings, mask, labels, attack_model, criterion, handler)
+    print('-----------------------------------------------------------')
+    print()
