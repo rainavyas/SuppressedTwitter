@@ -30,14 +30,19 @@ _python ./train.py electra_trained.th electra --B=8 --lr=0.00001 --epochs=5 --su
 
 # Experimental Results
 
-| Model Architecture | Test Accuracy (%) |
-| ----------------- | :-----------------: |
-ELECTRA (base) encoder + classification head |  |
+| Epochs | Test Accuracy (%) | Singular Value Sum |
+| :-----------------: | :-----------------: | :-----------------: |
+20 | 92.3 | 527 |
+40 | 91.1 | 253 |
+60 | 87.1 | 120 |
+
+
+Note: Training without suppression achieved an accuracy of 93.3% and had a singular value sum of 1361.
 
 ### Training Details
 
-- Initialise encoder with _model_
-- Batch Size = 8
-- Epochs = 
-- Learning Rate = 
-- Suppression cost function ceofficient = 
+- Initialise encoder with _electra_
+- Batch Size = 16
+- Epochs = Dependent on level of suppression
+- Learning Rate = 1e-5
+- Suppression cost function ceofficient = 10.0
